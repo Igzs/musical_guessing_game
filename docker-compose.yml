@@ -2,6 +2,8 @@ version: "3.3"
 
 services:
   backend:
+    env_file:
+      - .env 
     build: ./backend  # Specify the path to your FastAPI backend
     ports:
       - "8000:8000"  # Map port 8000 on the host to port 8000 on the container
@@ -12,3 +14,16 @@ services:
       - "5173:5173"  # Map port 5173 on the host to port 5173 on the container
     depends_on:
       - backend
+  postgres:
+    image: postgres:13
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:
