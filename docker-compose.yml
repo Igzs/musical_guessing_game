@@ -1,0 +1,14 @@
+version: "3.3"
+
+services:
+  backend:
+    build: ./backend  # Specify the path to your FastAPI backend
+    ports:
+      - "8000:8000"  # Map port 8000 on the host to port 8000 on the container
+
+  frontend:
+    build: ./frontend  # Specify the path to your Vue.js frontend
+    ports:
+      - "5173:5173"  # Map port 5173 on the host to port 5173 on the container
+    depends_on:
+      - backend
