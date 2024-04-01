@@ -62,6 +62,7 @@ def login(response: Response):
         url="https://accounts.spotify.com/authorize?" + urlencode(params)
     )
     response.set_cookie(key=STATE_KEY, value=state)
+
     return response
 
 
@@ -91,8 +92,9 @@ def callback(request: Request, response: Response):
         refresh_token = data["refresh_token"]
 
         response = RedirectResponse(url=f"{FRONT_URI}/user_profile")
-        response.set_cookie(key="accessToken", value=access_token)
-        response.set_cookie(key="refreshToken", value=refresh_token)
+        response.set_cookie(key="accessToken", value=access_token, httponly=True, samesite='Lax', secure=True)
+
+        response.set_cookie(key="refreshToken", value=refresh_token, httponly=True, samesite='Lax', secure=True)
 
     return response
 
@@ -101,12 +103,9 @@ def callback(request: Request, response: Response):
 def main(request: Request):
     if request.cookies.get("accessToken"):
         access_token = request.cookies.get("accessToken")
-        print("TRUEEEE")
         header = {"Authorization": "Bearer " + access_token}
         response = requests.get("https://api.spotify.com/v1/me", headers=header)
         
-        # Print the entire raw response
-        print(response.content)
         
         # For JSON responses, this is more useful:
         try:
@@ -125,7 +124,6 @@ def main(request: Request):
         else:
             return "Welcome! Could not retrieve user details."
     else:
-        print("FAAAALSE")
         return "Welcome!"
 
 
@@ -172,3 +170,35 @@ def refresh_token(request: Request):
         access_token = data["access_token"]
 
         return {"access_token": access_token}
+    
+
+import requests
+
+def is_token_valid(access_token: str) -> bool:
+    """
+    Validate an access token by making a request to a Spotify API endpoint
+    that requires authentication.
+    """
+    headers = {"Authorization": f"Bearer {access_token}"}
+    response = requests.get("https://api.spotify.com/v1/me", headers=headers)
+    
+    # If the response status code is 200, the token is valid; otherwise, it's invalid or expired.
+    return response.status_code == 200
+
+    
+@app.get("/auth/verify")
+def verify_authentication(request: Request):
+    # Assume accessToken is stored in an HttpOnly cookie
+    access_token = request.cookies.get("accessToken")
+    if access_token and is_token_valid(access_token):  # Implement is_token_valid()
+        return {"authenticated": True}
+    else:
+        return {"authenticated": False}
+    
+@app.get("/logout")
+def logout(response: Response):
+    response.delete_cookie(key="accessToken", path="/")
+    response.delete_cookie(key="refreshToken", path="/")
+    # Instead of redirecting, return a simple JSON response
+    return {"message": "Logged out successfully"}
+
